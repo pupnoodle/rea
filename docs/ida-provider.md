@@ -32,6 +32,26 @@ Open the **original input binary** in REA, not an `.idb` or `.i64` database. Its
 
 REA's close operation releases its MCP connection or proxy. It never saves or closes the existing GUI database. External edits remain visible because results are live and are not replayed from snapshots. These checks do not lock the GUI or prove that the database is unpatched.
 
+## Analyze an open GUI target with ida-pro-mcp 2.x
+
+The 2.x `ida-pro-mcp` stdio proxy uses a different tool catalog from the 1.4 legacy profile. Register it with `"protocol": "modern"` in the same attached registration:
+
+```json
+{
+  "command": "python",
+  "args": [
+    "/absolute/path/to/ida-pro-mcp/src/ida_pro_mcp/server.py",
+    "--ida-rpc",
+    "http://127.0.0.1:13337"
+  ],
+  "protocol": "modern"
+}
+```
+
+In this profile, REA reads identity from the `ida://idb/metadata` resource and checks the recorded input SHA-256 and image base, as the native profile does. It uses the 2.x read-only analysis tools and never calls the headless `idb_*` supervisor tools. Direct callers remain unavailable because this catalog does not prove call edges. The 2.x `decompile` returns a complete function in one reply, so REA requests it without paging. Omitting `protocol` keeps the 1.4 legacy profile.
+
+This profile was verified against ida-pro-mcp 2.0.0 with IDA attached to a PE x86-64 target. Two distinct functions decompiled through `rea function`, and each run matched the recorded SHA-256. GUI navigation is treated as possible, as in the legacy profile.
+
 ## Optional native IDA MCP bridge
 
 IDA Pro and IDA Free can use the separate [ida-free-mcp native plugin](https://github.com/0xshlomil/ida-free-mcp) through an explicit attached registration. Install and start that plugin using its upstream instructions, open the original binary in the IDA GUI, and wait for analysis. The native MCP 1.1.2 release binds `0.0.0.0` without a listen-address setting. Restrict inbound access with the host firewall or use an upstream build that binds only to loopback before starting it. REA's loopback URL restriction does not change the plugin's listener. REA does not install IDA, build the plugin, activate a license, or launch the GUI.

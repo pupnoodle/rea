@@ -59,7 +59,7 @@ const parseIdaJsonText = (text: string): JsonValue => {
 /** Decode Python FastMCP's scalar wrapper without dropping structured dictionaries. */
 export const decodeIdaToolResult = (
   input: unknown,
-  protocol?: "native",
+  protocol?: "native" | "modern",
 ): JsonValue => {
   const result = toolResultSchema.parse(input);
   const blocks = result.content.flatMap((block) =>

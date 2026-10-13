@@ -56,17 +56,19 @@ const ATTACHED_GUI_NAVIGATION_OPERATIONS: ReadonlySet<IdaOperation> = new Set([
 export const idaCapabilities = (
   mode: "attached" | "headless",
   stdio: boolean,
-  native = false,
+  profile: "legacy" | "modern" | "native" = "legacy",
 ): readonly CapabilityDescriptor[] =>
   IDA_OPERATIONS.map((operation) => ({
     provider: IDA_PROVIDER_IDENTITY,
     operation,
-    ...((mode === "headless" || native) && operation === "procedure_callers"
+    ...((mode === "headless" || profile !== "legacy") &&
+    operation === "procedure_callers"
       ? ({
           available: false,
-          reason: native
-            ? "The native upstream profile reports code references without proving direct call edges."
-            : "The modern upstream profile reports code references without proving direct call edges.",
+          reason:
+            profile === "native"
+              ? "The native upstream profile reports code references without proving direct call edges."
+              : "The modern upstream profile reports code references without proving direct call edges.",
         } as const)
       : ({ available: true, reason: null } as const)),
     cachePolicy: "live",
@@ -75,7 +77,7 @@ export const idaCapabilities = (
       launchesProcess: stdio || mode === "headless",
       mayShowUi:
         mode === "attached" &&
-        (native
+        (profile === "native"
           ? operation === "procedure_pseudo_code" ||
             operation === "analyze_function"
           : ATTACHED_GUI_NAVIGATION_OPERATIONS.has(operation)),
@@ -85,7 +87,8 @@ export const idaCapabilities = (
       requiresRoot: false,
     },
     limitations:
-      native && (operation === "list_strings" || operation === "search_strings")
+      profile === "native" &&
+      (operation === "list_strings" || operation === "search_strings")
         ? [...IDA_LIMITATIONS, IDA_NATIVE_STRING_LIMITATION]
         : IDA_LIMITATIONS,
   }));

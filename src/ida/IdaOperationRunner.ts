@@ -36,6 +36,7 @@ import {
   legacyPageSchema,
   legacyStringSchema,
   legacyXrefsSchema,
+  attachedDecompileSchema,
   modernCalleesSchema,
   modernDecompileSchema,
   modernDisassemblySchema,
@@ -97,6 +98,8 @@ export class IdaOperationRunner {
       readonly x86Only?: boolean;
       /** False when the upstream server does not advertise `callgraph`. */
       readonly callGraphAvailable?: boolean;
+      /** True when the upstream `decompile` returns a whole function without paging arguments. */
+      readonly singlePageDecompile?: boolean;
     } = {},
   ) {}
 
@@ -353,6 +356,16 @@ export class IdaOperationRunner {
         "Native pseudocode is rendered GUI text; the upstream viewer traversal is bounded and does not establish complete source recovery.",
       );
       return page.pseudocode;
+    }
+    if (this.options.singlePageDecompile) {
+      const page = attachedDecompileSchema.parse(
+        await this.call("decompile", { addr: fn.address }),
+      );
+      if (page.code === null || page.error !== undefined)
+        throw new AnalysisProtocolError(
+          `IDA decompilation failed: ${page.error ?? "missing code"}`,
+        );
+      return page.code;
     }
     const result: string[] = [];
     let offset: number | null = 0;

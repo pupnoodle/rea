@@ -129,6 +129,10 @@ export const modernDecompileSchema = z.object({
   line_count: z.number().int().nonnegative().optional(),
   total_lines: z.number().int().nonnegative().optional(),
 });
+/** The attached ida-pro-mcp 2.x `decompile` returns one complete function without a cursor. */
+export const attachedDecompileSchema = modernDecompileSchema.omit({
+  cursor: true,
+});
 
 export const legacyStringSchema = z.object({
   address: idaAddressSchema,

@@ -76,6 +76,9 @@ const modernTools = [
   "callees",
   "xrefs_to",
 ];
+const attachedModernTools = modernTools.filter(
+  (name) => !name.startsWith("idb_"),
+);
 const operationSet: ReadonlySet<string> = new Set(IDA_OPERATIONS);
 
 const isIdaOperation = (operation: string): operation is IdaOperation =>
@@ -293,6 +296,8 @@ export class IdaSessionClient implements AnalysisClient {
         selectorOrigin: options?.selectorOrigin,
         x86Only: isX86OnlyTarget(this.target),
         callGraphAvailable: this.#callGraphAdvertised,
+        singlePageDecompile:
+          this.config.mode === "attached" && this.config.protocol === "modern",
       },
     );
   }
@@ -427,12 +432,14 @@ export class IdaSessionClient implements AnalysisClient {
       this.config.protocol === "native"
         ? nativeTools
         : this.config.mode === "attached"
-          ? legacyTools
+          ? this.config.protocol === "modern"
+            ? attachedModernTools
+            : legacyTools
           : modernTools;
     const missing = expected.filter((name) => !tools.has(name));
     if (missing.length > 0)
       throw new AnalysisProtocolError(
-        `IDA MCP ${this.config.protocol === "native" ? "native attached" : this.config.mode} compatibility profile is missing tools: ${missing.join(", ")}. Native attached mode requires the native IDA MCP tool catalog; legacy attached mode requires the legacy 1.4 profile; headless mode requires the database supervisor profile. See docs/ida-provider.md.`,
+        `IDA MCP ${this.config.protocol === "native" ? "native attached" : this.config.mode} compatibility profile is missing tools: ${missing.join(", ")}. Native attached mode requires the native IDA MCP tool catalog; legacy attached mode requires the legacy 1.4 profile; modern attached mode requires the ida-pro-mcp 2.x tool catalog; headless mode requires the database supervisor profile. See docs/ida-provider.md.`,
       );
     if (this.config.mode === "headless") {
       this.#workspace = await IdaWorkspace.allocate(
@@ -482,10 +489,10 @@ export class IdaSessionClient implements AnalysisClient {
     }
   }
 
-  async #nativeMetadata(): Promise<JsonValue> {
+  async #resourceMetadata(): Promise<JsonValue> {
     if (this.connection.readResource === undefined)
       throw new AnalysisProtocolError(
-        "Native IDA MCP requires resources/read for recorded input metadata.",
+        "This IDA MCP profile requires resources/read for recorded input metadata.",
       );
     return this.connection.readResource("ida://idb/metadata");
   }
@@ -497,9 +504,9 @@ export class IdaSessionClient implements AnalysisClient {
     let identity: string;
     if (this.config.mode === "attached") {
       const raw =
-        this.config.protocol === "native"
-          ? await this.#nativeMetadata()
-          : await this.connection.call("get_metadata", {});
+        this.config.protocol === undefined
+          ? await this.connection.call("get_metadata", {})
+          : await this.#resourceMetadata();
       const metadata = legacyMetadataSchema.parse(raw);
       this.#metadata = raw;
       onObserved?.(raw);

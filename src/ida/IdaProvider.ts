@@ -58,7 +58,7 @@ export class IdaProvider implements AnalysisProviderCandidate {
     return idaCapabilities(
       config.ok ? config.value.mode : "attached",
       config.ok && "command" in config.value,
-      config.ok && config.value.protocol === "native",
+      config.ok ? (config.value.protocol ?? "legacy") : "legacy",
     );
   }
   inspectAvailability(): ProviderAvailability {
@@ -153,7 +153,9 @@ export class IdaProvider implements AnalysisProviderCandidate {
           config.value.protocol === "native"
             ? "native-ida-mcp"
             : config.value.mode === "attached"
-              ? "legacy-1.4"
+              ? config.value.protocol === "modern"
+                ? "modern-2.x-attached"
+                : "legacy-1.4"
               : "database-supervisor",
         database_revision: null,
         cache_policy: "live",

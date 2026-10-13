@@ -6,7 +6,7 @@ import { err, ok, type Result } from "../domain/result.js";
 
 const common = {
   mode: z.enum(["attached", "headless"]).default("attached"),
-  protocol: z.literal("native").optional(),
+  protocol: z.enum(["native", "modern"]).optional(),
   timeoutMs: z.number().int().positive().max(2_147_483_647).default(300_000),
   workspaceRoot: z
     .string()
